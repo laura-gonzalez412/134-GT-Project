@@ -57,56 +57,100 @@ def get_infected_range(infections):
 
 
 def binary_splitting(s, test_type='binary'):
+    # Define the function with an optional parameter 'test_type' which defaults to 'binary' if not specified.
     # modified bs
     # s: 1-d array the infectious status
    # s: 1-d array of infection statuses
+
+   # Create a 2D array 'st' with the same number of rows as 's' and two columns, initialized to zero.
     st = np.zeros((len(s), 2))
+
+    # Copy the input array 's' (infection statuses) into the first column of 'st'.
     st[:,0] = s
+
+    # Initialize the second column of 'st' to NaN, indicating that the test results for these entries are pending.
     st[:,1] = np.nan  # NaN indicates untested status
+
+    # Initialize a counter for the number of tests performed.
     num_tests = 0
+
+    # Initialize a counter for the number of stages (sequential rounds of testing) performed.
     stages = 0
     
+    # Continue looping as long as there are any NaN values in the second column of 'st', indicating pending tests.
     while np.isnan(st[:,1]).any():
+
+        # Create a boolean mask where True values correspond to NaN entries in the second column of 'st'.
         mask = np.isnan(st[:,1])
+
+        # Check if the test_type is 'T1' (exact count of infections).
         if test_type == 'T1':
+
+            # Calculate the sum of the first column of 'st' where the mask is True, which gives the number of infected individuals in untested groups.
             # T1 Test: Get exact number of infections
             infected_count = np.sum(st[mask,0])
+
+            # Increment the counters for tests and stages.
             num_tests += 1
             stages += 1
+
+            # If no infections are found, set the corresponding entries in the second column to 0 (uninfected).
             if infected_count == 0:
                 st[mask,1] = 0
+
+            # If all individuals in the group are infected, set the test results to match the infection statuses.
             elif infected_count == len(st[mask,0]):
                 st[mask,1] = st[mask,0]
             else:
+                # If the number of infected is between 0 and the group size, further splitting is required.
                 # Splitting required
+                # Recursively call a function to perform further splitting on the subgroup.
                 n, stmp, stage = binary_splitting_round(st[mask,:])
+
+                # Update the test results in 'st' based on the results of the recursive call.
                 st[mask,1] = stmp[:,1]
+
+                # Update the counts of tests and stages.
                 num_tests += n
                 stages += stage
         elif test_type == 'T2':
             # T2 Test: Get infection range
             infected_range = get_infected_range(st[mask,0])  # Define this function based on the range specifics
+
+            # Increment the counters for tests and stages.
             num_tests += 1
             stages += 1
+
+            # If the upper bound of the range is 0, set all corresponding entries to 0 (uninfected).
             if infected_range[1] == 0:
                 st[mask,1] = 0
+
+            # If the lower bound of the range matches the group size, set the test results to match the infection statuses.
             elif infected_range[0] == len(st[mask,0]):
                 st[mask,1] = st[mask,0]
             else:
                 # Apply adaptive splitting based on the range
                 n, stmp, stage = binary_splitting(st[mask,:], test_type='T2')
+
+                # Update the test results in 'st' based on the results from the recursive call.
                 st[mask,1] = stmp[:,1]
                 num_tests += n
                 stages += stage
         else:
             # Default binary test
+            # Determine if there is at least one infected individual in the untested groups.
             flag = np.sum(st[mask,0]) > 0
             num_tests += 1
             stages += 1
+
+            # If no infections are detected, set all corresponding entries to 0 (uninfected).
             if not flag:
                 st[mask,1] = 0
             else:
+                # Recursively call a function to perform further splitting on the subgroup.
                 n, stmp, stage = binary_splitting_round(st[mask,:])
+
+                # Update the test results in 'st' based on the results of the recursive call.
                 st[mask,1] = stmp[:,1]
                 num_tests += n
                 stages += stage
@@ -170,7 +214,7 @@ def Qtesting1(s):
         return num_tests, stages
 
     # Directly use binary_splitting with T1 test type
-    num_tests, stages, results = binary_splitting(s, test_type='T1')
+    num_tests, stages = binary_splitting(s, test_type='T1')
     ###################################################
 
     return num_tests,stages
@@ -205,9 +249,6 @@ def Qtesting2(s):
     """
     num_tests, stages = binary_splitting(s, test_type='T2')
     ###################################################
-
-
-
     return num_tests,stages
 
 
