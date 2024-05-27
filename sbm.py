@@ -21,7 +21,7 @@ def SBM(N, M, q0, q1):
     
     
     # Step 2: Initialize the adjacency matrix with all zeros
-    G = np.zeros((N, N), dtype=int)
+    G = np.zeros((N, N), dtype=int) #creates a 2D binary array 
     
     # Step 3: Generate edges based on probabilities
     for i in range(N):
