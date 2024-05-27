@@ -29,32 +29,89 @@ def binary_splitting_round(s):
     stages += stage
     return num,s,stages 
 
-def binary_splitting(s):
+
+def get_infected_range(infections):
+    """
+    Determine the range of infected individuals in a group based on predefined categories.
+
+    Parameters:
+    infections (np.array): Array of binary values where 1 indicates infection and 0 indicates no infection.
+
+    Returns:
+    tuple: A tuple representing the range of infected individuals (min, max).
+    """
+    count = np.sum(infections)  # Count the number of infected individuals
+    
+    if count == 0:
+        return (0, 0)  # No one is infected
+    elif count == 1:
+        return (1, 1)  # Exactly one person is infected
+    elif count < 2:
+        return (1, 2)  # 1 to less than 2, not typically used unless fractional infections are considered
+    elif count < 4:
+        return (2, 4)  # 2 to less than 4
+    elif count < 8:
+        return (4, 8)  # 4 to less than 8
+    else:
+        return (8, np.inf)  # 8 or more
+
+
+def binary_splitting(s, test_type='binary'):
     # modified bs
     # s: 1-d array the infectious status
-    st = np.zeros((len(s),2))
+   # s: 1-d array of infection statuses
+    st = np.zeros((len(s), 2))
     st[:,0] = s
-    st[:,1] = np.nan
-    nums = 0
-    count = sum(np.isnan(st[:,1]))
+    st[:,1] = np.nan  # NaN indicates untested status
+    num_tests = 0
     stages = 0
-    # the undetermined people
-    while count!=0:
+    
+    while np.isnan(st[:,1]).any():
         mask = np.isnan(st[:,1])
-        flag = sum(st[mask,0]>0)>0
-        nums += 1
-        stages+=1
-        if not flag:
-            st[mask,1] = 0
+        if test_type == 'T1':
+            # T1 Test: Get exact number of infections
+            infected_count = np.sum(st[mask,0])
+            num_tests += 1
+            stages += 1
+            if infected_count == 0:
+                st[mask,1] = 0
+            elif infected_count == len(st[mask,0]):
+                st[mask,1] = st[mask,0]
+            else:
+                # Splitting required
+                n, stmp, stage = binary_splitting_round(st[mask,:])
+                st[mask,1] = stmp[:,1]
+                num_tests += n
+                stages += stage
+        elif test_type == 'T2':
+            # T2 Test: Get infection range
+            infected_range = get_infected_range(st[mask,0])  # Define this function based on the range specifics
+            num_tests += 1
+            stages += 1
+            if infected_range[1] == 0:
+                st[mask,1] = 0
+            elif infected_range[0] == len(st[mask,0]):
+                st[mask,1] = st[mask,0]
+            else:
+                # Apply adaptive splitting based on the range
+                n, stmp, stage = binary_splitting(st[mask,:], test_type='T2')
+                st[mask,1] = stmp[:,1]
+                num_tests += n
+                stages += stage
         else:
-            n,stmp,stage = binary_splitting_round(st[mask,:])
-            st[mask,1] = stmp[:,1]
-            nums += n
-            stages += stage
-        count = sum(np.isnan(st[:,1]))
-        
-    assert sum(st[:,0]!=st[:,1])==0
-    return nums,stages, st[:,1]
+            # Default binary test
+            flag = np.sum(st[mask,0]) > 0
+            num_tests += 1
+            stages += 1
+            if not flag:
+                st[mask,1] = 0
+            else:
+                n, stmp, stage = binary_splitting_round(st[mask,:])
+                st[mask,1] = stmp[:,1]
+                num_tests += n
+                stages += stage
+    
+    return num_tests, stages, st[:,1]
 
 # diag
 def diagalg_iter(s):
