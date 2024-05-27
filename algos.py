@@ -162,38 +162,16 @@ def Qtesting1(s):
     ###################################################
     '''your code here'''
     '''
-    s(np.array): binary string of infection status
-    Implement an adaptive algorithm using the exact count (T1 tests).
+    Implements an adaptive algorithm using the exact count (T1 tests).
     '''
     num_tests = 0
     stages = 0
     if len(s) == 0:
         return num_tests, stages
 
-    # Assuming the first test happens here
-    infected_count = np.sum(s)  # Simulating the result of a T1 test
-    num_tests += 1  # Count this test
-    stages += 1  # This is the first stage
-
-    if infected_count == 0:
-        return num_tests, stages  # No further tests needed if no infections found
-    elif infected_count == len(s):
-        return num_tests, stages  # All are infected, no further tests needed if individual status not required
-    elif infected_count == 1:
-        # Apply binary splitting to find the single infected if required
-        return binary_splitting(s)  # Assuming binary_splitting correctly returns num_tests, stages
-
-    # Recursive case: split the group
-    mid = len(s) // 2
-    num_tests_left, stages_left = Qtesting1(s[:mid])
-    num_tests_right, stages_right = Qtesting1(s[mid:])
-    
-    num_tests += num_tests_left + num_tests_right
-    stages += max(stages_left, stages_right)  # Assuming parallel testing in splits
-
+    # Directly use binary_splitting with T1 test type
+    num_tests, stages, results = binary_splitting(s, test_type='T1')
     ###################################################
-
-
 
     return num_tests,stages
 
@@ -222,33 +200,10 @@ def Qtesting2(s):
     stages = 0
     ###################################################
     '''your code here'''
-    '''
-    s(np.array): binary string of infection status
-    Use ranges of infection counts to optimize the testing.
-    '''
-    num_tests = 0
-    stages = 0
-    if len(s) == 0:
-        return num_tests, stages
-
-    # Simulate getting a range from T2
-    infected_range = get_infected_range_estimate(s)
-    num_tests += 1  # Count this initial test
-    stages += 1  # First stage for the initial test
-
-    if infected_range[1] == 0:
-        return num_tests, stages  # No one is infected, so no further tests needed
-    elif infected_range[0] == len(s):
-        return num_tests, stages  # All are infected, no further tests needed if individual status not required
-
-    # Recursive case: we don't know the exact count, but we have a range
-    mid = len(s) // 2
-    num_tests_left, stages_left = Qtesting2(s[:mid])
-    num_tests_right, stages_right = Qtesting2(s[mid:])
-    
-    num_tests += num_tests_left + num_tests_right
-    stages += max(stages_left, stages_right)  # Assuming parallel testing in splits
-
+    """
+    Implements adaptive algorithm using ranges of infection counts (T2 tests).
+    """
+    num_tests, stages = binary_splitting(s, test_type='T2')
     ###################################################
 
 
