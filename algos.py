@@ -1,5 +1,6 @@
 import numpy as np
 import random
+from concurrent.futures import ThreadPoolExecutor
 
 
 # binary spliting
@@ -228,8 +229,16 @@ def Qtesting2(s):
             # Since infection count is large split the group into smaller subgroups for further testing
             # similar to Qtesting1
             mid = len(indices) // 2
-            recursive_test(indices[:mid])
-            recursive_test(indices[mid:])
+            ### recursive_test(indices[:mid])
+            ### recursive_test(indices[mid:])
+
+            #################################### Additional Code for Parallel Testing
+            with ThreadPoolExecutor() as executor:
+                futures = [executor.submit(recursive_test, indices[:mid]), 
+                           executor.submit(recursive_test, indices[mid:])]
+                # Wait for all threads to complete
+                for future in futures:
+                    future.result()
             
         else: #here we can use the knowledge of the ranges to tell us how we can run our next tests
             # Handle other categories by additional tests based on estimated infections
