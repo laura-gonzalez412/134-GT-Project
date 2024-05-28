@@ -4,26 +4,34 @@ import random
 
 # binary spliting
 def binary_splitting_round(s):
-    # s: np.array the infectious status & test status
+    # s: np.array the infectious status & test status (i.e a 2D array)
     num = 0
-    flag = sum(s[:,0])>0
+    flag = sum(s[:,0])>0 # true if there is at least one infected
     assert flag
     stages = 0
-    if len(s[:,0])==1:
+    
+    #base case of recursion
+    if len(s[:,0])==1: #if there is only one person left 
         s[0,1] = s[0,0]
+        #else if s[1,1] then it stays [1,1] to represent infected 
         return num,s,stages
     
+    #split up the set into two halves
     B1, B2 = np.array_split(s.copy(), 2,axis=0)
+    
+    #test to see if B1 has at least one infected 
     flag = sum(B1[:,0])>0
-    num+=1
+    num+=1 #tested one more so increment
     stages += 1
     
-    if flag:
+    
+    if flag: #if true reiterate the process 
         n,stmp,stage = binary_splitting_round(B1)
         s[:len(B1),1] = stmp[:,1]
-    else:
-        s[:len(B1),1] = 0
-        n,stmp,stage = binary_splitting_round(B2)
+        
+    else: #nobody infected in B1 so they must be in B2
+        s[:len(B1),1] = 0 #set all status' of B1 to zero since not infected
+        n,stmp,stage = binary_splitting_round(B2) #recursively call binary split on B2
         s[len(B1):,1] = stmp[:,1]
     num += n
     stages += stage
