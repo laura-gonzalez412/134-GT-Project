@@ -145,20 +145,6 @@ def get_infected_range(infections):
 def test_T1(group):
     # Simulates a test that returns the exact number of infected in the group
     return np.sum(group)
-
-def test_T2(group):
-    # Simulates a test that categorizes the count of infected individuals in a group
-    infected_count = np.sum(group)
-    if infected_count == 0:
-        return 0
-    elif 1 <= infected_count < 2:
-        return 1
-    elif 2 <= infected_count < 4:
-        return 2
-    elif 4 <= infected_count < 8:
-        return 3
-    else:
-        return 4
     
 def Qtesting1(s):
     '''
@@ -201,7 +187,20 @@ def Qtesting1(s):
     ####################################################################
     return num_tests,stages
 
-
+def test_T2(group):
+    # Simulates a test that categorizes the count of infected individuals in a group
+    infected_count = np.sum(group)
+    if infected_count == 0:
+        return 0
+    elif 1 <= infected_count < 2:
+        return 1
+    elif 2 <= infected_count < 4:
+        return 2
+    elif 4 <= infected_count < 8:
+        return 3
+    else:
+        return 4
+    
 def Qtesting2(s):
     '''
     s(np.array): binary string of infection status
@@ -212,15 +211,19 @@ def Qtesting2(s):
     def recursive_test(indices):
         nonlocal num_tests, stages
         
+        #base case where we have gone through all people in the set dont need to do anything just return 
         if len(indices) == 0:
             return
+        
+        #begin new round of testing
         num_tests += 1
         stages += 1
         group = s[indices]
         category = test_T2(group)
 
         if category == 0:
-            return  # All individuals are negative
+            return  # All individuals are negative and the previous recursive call has accounted for this test
+                    # no need to return num_tests or stages
         elif category == 4:
             # Assume worst-case scenario for the highest category
             if len(indices) > 8:
