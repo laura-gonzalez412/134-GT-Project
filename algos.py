@@ -124,6 +124,9 @@ def get_infected_range(infections):
     else:
         return (8, np.inf)  # 8 or more
 
+def test_T1(group):
+    # Simulates a test that returns the exact number of infected in the group
+    return np.sum(group)
 
 def Qtesting1(s):
     '''
@@ -131,27 +134,32 @@ def Qtesting1(s):
     '''
     ###################################################
     '''your code here'''
+    num_tests = 0
+    stages = 0
+
+    def recursive_test(indices):
+        nonlocal num_tests, stages
+        if len(indices) == 0:
+            return
+        num_tests += 1
+        stages += 1
+        group = s[indices]
+        infected_count = test_T1(group)
+
+        if infected_count == 0 or infected_count == len(indices):
+            return  # No further action needed as entire group is negative or positive
+        else:
+            # Choose indices for infected randomly, continue testing remaining individuals
+            infected_indices = np.random.choice(indices, infected_count, replace=False)
+            non_infected_indices = np.setdiff1d(indices, infected_indices)
+            recursive_test(non_infected_indices)
+
+    recursive_test(np.arange(len(s)))
     ###################################################
 
     return num_tests,stages
 
-def get_infected_range_estimate(s):
-    '''
-    Simulate the output of a T2 test by returning a tuple (min, max) representing
-    the range of possible infected counts based on the actual infections in s.
-    '''
-    actual_infected = np.sum(s)
-    if actual_infected == 0:
-        return (0, 0)
-    elif actual_infected <= 2:
-        return (1, 2)
-    elif actual_infected <= 4:
-        return (3, 4)
-    elif actual_infected <= 8:
-        return (5, 8)
-    else:
-        return (9, len(s))
-    
+
 def Qtesting2(s):
     '''
     s(np.array): binary string of infection status
@@ -160,7 +168,20 @@ def Qtesting2(s):
     return num_tests,stages
 
 
-
+def test_T2(group):
+    # Simulates a test that categorizes the count of infected individuals in a group
+    infected_count = np.sum(group)
+    if infected_count == 0:
+        return 0
+    elif 1 <= infected_count < 2:
+        return 1
+    elif 2 <= infected_count < 4:
+        return 2
+    elif 4 <= infected_count < 8:
+        return 3
+    else:
+        return 4
+    
 def Qtesting1_comm_aware(s,communities):
     '''
     s(np.array): binary string of infection status
@@ -177,11 +198,30 @@ def Qtesting1_comm_aware(s,communities):
     '''
     num_tests = 0
     stages = 0
-    for community in communities:
-        if len(community) > 0:
-            community_tests, community_stages = Qtesting1(s[community])
-            num_tests += community_tests
-            stages = max(stages, community_stages)  # Parallel testing across communities
+
+    def recursive_test(indices):
+        nonlocal num_tests, stages
+        if len(indices) == 0:
+            return
+        num_tests += 1
+        stages += 1
+        group = s[indices]
+        category = test_T2(group)
+
+        if category == 0:
+            return  # All individuals are negative
+        elif category == 4:
+            # Assume worst-case scenario for the highest category
+            if len(indices) > 8:
+                infected_indices = np.random.choice(indices, 8, replace=False)
+                recursive_test(np.setdiff1d(indices, infected_indices))
+        else:
+            # Handle other categories by additional tests based on estimated infections
+            estimated_infected = (2 ** (category + 1) - 2) // 2
+            infected_indices = np.random.choice(indices, estimated_infected, replace=False)
+            recursive_test(np.setdiff1d(indices, infected_indices))
+
+    recursive_test(np.arange(len(s)))
     ###################################################
 
 
