@@ -164,7 +164,32 @@ def Qtesting2(s):
     '''
     s(np.array): binary string of infection status
     '''
+    num_tests = 0
+    stages = 0
     ###################################################
+    def recursive_test(indices):
+        nonlocal num_tests, stages
+        if len(indices) == 0:
+            return
+        num_tests += 1
+        stages += 1
+        group = s[indices]
+        category = test_T2(group)
+
+        if category == 0:
+            return  # All individuals are negative
+        elif category == 4:
+            # Assume worst-case scenario for the highest category
+            if len(indices) > 8:
+                infected_indices = np.random.choice(indices, 8, replace=False)
+                recursive_test(np.setdiff1d(indices, infected_indices))
+        else:
+            # Handle other categories by additional tests based on estimated infections
+            estimated_infected = (2 ** (category + 1) - 2) // 2
+            infected_indices = np.random.choice(indices, estimated_infected, replace=False)
+            recursive_test(np.setdiff1d(indices, infected_indices))
+
+    recursive_test(np.arange(len(s)))
     return num_tests,stages
 
 
@@ -196,35 +221,7 @@ def Qtesting1_comm_aware(s,communities):
     communities(list): the community information
     Apply Qtesting1 logic but initiate within communities.
     '''
-    num_tests = 0
-    stages = 0
-
-    def recursive_test(indices):
-        nonlocal num_tests, stages
-        if len(indices) == 0:
-            return
-        num_tests += 1
-        stages += 1
-        group = s[indices]
-        category = test_T2(group)
-
-        if category == 0:
-            return  # All individuals are negative
-        elif category == 4:
-            # Assume worst-case scenario for the highest category
-            if len(indices) > 8:
-                infected_indices = np.random.choice(indices, 8, replace=False)
-                recursive_test(np.setdiff1d(indices, infected_indices))
-        else:
-            # Handle other categories by additional tests based on estimated infections
-            estimated_infected = (2 ** (category + 1) - 2) // 2
-            infected_indices = np.random.choice(indices, estimated_infected, replace=False)
-            recursive_test(np.setdiff1d(indices, infected_indices))
-
-    recursive_test(np.arange(len(s)))
     ###################################################
-
-
 
     return num_tests,stages
 
