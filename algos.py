@@ -225,18 +225,26 @@ def Qtesting2(s):
             return  # All individuals are negative and the previous recursive call has accounted for this test
                     # no need to return num_tests or stages
         elif category == 4:
-            # Assume worst-case scenario for the highest category
-            if len(indices) > 8:
-                infected_indices = np.random.choice(indices, 8, replace=False)
-                recursive_test(np.setdiff1d(indices, infected_indices))
-        else:
+            # Since infection count is large split the group into smaller subgroups for further testing
+            # similar to Qtesting1
+            mid = len(indices) // 2
+            recursive_test(indices[:mid])
+            recursive_test(indices[mid:])
+            
+        else: #here we can use the knowledge of the ranges to tell us how we can run our next tests
             # Handle other categories by additional tests based on estimated infections
-            estimated_infected = (2 ** (category + 1) - 2) // 2
-            infected_indices = np.random.choice(indices, estimated_infected, replace=False)
+            lower_bound = 2 ** (category - 1)
+            upper_bound = 2 ** category
+            # Category 1: lower_bound = 1, upper_bound = 2
+            # Category 2: lower_bound = 2, upper_bound = 4
+            # Category 3: lower_bound = 4, upper_bound = 8
+            
+            estimated_infected = (lower_bound + upper_bound) // 2 #gets the average of infected in that range
+            infected_indices = np.random.choice(indices, min(estimated_infected, len(indices)), replace=False)
             recursive_test(np.setdiff1d(indices, infected_indices))
 
     recursive_test(np.arange(len(s)))
-    return num_tests,stages
+    return num_tests, stages
     
 def Qtesting1_comm_aware(s,communities):
     '''
