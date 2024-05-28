@@ -219,6 +219,8 @@ def Qtesting2(s):
         num_tests += 1
         stages += 1
         group = s[indices]
+        
+        #call test_T2 which magically gies us the estimated number of people who are infected
         category = test_T2(group)
 
         if category == 0:
