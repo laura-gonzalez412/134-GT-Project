@@ -24,8 +24,6 @@ def infect_step(G,p1,individuals,N):
     return individuals_updated
 
 
-
-
 def infect(G,p0,p1,time_steps):
     '''The function serves as the infection model for each day.
     input params (consistent with the project description):

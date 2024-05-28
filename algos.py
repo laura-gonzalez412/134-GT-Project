@@ -2,12 +2,12 @@ import numpy as np
 import random
 
 
-# binary spliting
+# binary spliting-------------------------------------------
 def binary_splitting_round(s):
     # s: np.array the infectious status & test status
     num = 0
-    flag = sum(s[:,0])>0
-    assert flag
+    flag = sum(s[:,0])>0 #sums up all values in column 1 and sees if greater than zero
+    assert flag # asserting that flag is true
     stages = 0
     if len(s[:,0])==1:
         s[0,1] = s[0,0]
@@ -56,7 +56,7 @@ def binary_splitting(s):
     assert sum(st[:,0]!=st[:,1])==0
     return nums,stages, st[:,1]
 
-# diag
+# diag----------------------------------------------------
 def diagalg_iter(s):
     # s(np.array): binary string of infection status
     k = int(np.log2(len(s)))
