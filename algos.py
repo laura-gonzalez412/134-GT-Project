@@ -146,35 +146,59 @@ def test_T1(group):
     # Simulates a test that returns the exact number of infected in the group
     return np.sum(group)
 
+def test_T2(group):
+    # Simulates a test that categorizes the count of infected individuals in a group
+    infected_count = np.sum(group)
+    if infected_count == 0:
+        return 0
+    elif 1 <= infected_count < 2:
+        return 1
+    elif 2 <= infected_count < 4:
+        return 2
+    elif 4 <= infected_count < 8:
+        return 3
+    else:
+        return 4
+    
 def Qtesting1(s):
     '''
     s(np.array): binary string of infection status
     '''
-    ###################################################
-    '''your code here'''
     num_tests = 0
     stages = 0
-
+    #######################Edited code below############################
+    #this code uses recursion to divide an conquer by spliting up the group until all infection status' are determined
     def recursive_test(indices):
         nonlocal num_tests, stages
+        
+        #handles the base case where we have no more people to test dont count as a test or stage
         if len(indices) == 0:
-            return
+            return 
+        
+        #simply start off by testing using the magical T1 test which tells us how many people are infected
+        #if it returns something greater than one than we continue 
         num_tests += 1
         stages += 1
         group = s[indices]
+        
         infected_count = test_T1(group)
 
+        #this allows us to take care of two extreme case, where everyone is infected or none 
+        #infected. This greatly reduces the amount of tests othewise we would have to keep spliting and 
+        #testing until all people are determined. This function lets us stop here 
         if infected_count == 0 or infected_count == len(indices):
             return  # No further action needed as entire group is negative or positive
-        else:
-            # Choose indices for infected randomly, continue testing remaining individuals
-            infected_indices = np.random.choice(indices, infected_count, replace=False)
-            non_infected_indices = np.setdiff1d(indices, infected_indices)
-            recursive_test(non_infected_indices)
+        
+        # Split the group into two halves and test each half recursively
+        mid = len(indices) // 2
+        left_indices = indices[:mid]
+        right_indices = indices[mid:]
+
+        recursive_test(left_indices)
+        recursive_test(right_indices)
 
     recursive_test(np.arange(len(s)))
-    ###################################################
-
+    ####################################################################
     return num_tests,stages
 
 
@@ -187,6 +211,7 @@ def Qtesting2(s):
     ###################################################
     def recursive_test(indices):
         nonlocal num_tests, stages
+        
         if len(indices) == 0:
             return
         num_tests += 1
@@ -209,21 +234,6 @@ def Qtesting2(s):
 
     recursive_test(np.arange(len(s)))
     return num_tests,stages
-
-
-def test_T2(group):
-    # Simulates a test that categorizes the count of infected individuals in a group
-    infected_count = np.sum(group)
-    if infected_count == 0:
-        return 0
-    elif 1 <= infected_count < 2:
-        return 1
-    elif 2 <= infected_count < 4:
-        return 2
-    elif 4 <= infected_count < 8:
-        return 3
-    else:
-        return 4
     
 def Qtesting1_comm_aware(s,communities):
     '''
