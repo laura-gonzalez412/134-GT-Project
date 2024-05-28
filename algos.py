@@ -2,12 +2,12 @@ import numpy as np
 import random
 
 
-# binary spliting-------------------------------------------
+# binary spliting
 def binary_splitting_round(s):
     # s: np.array the infectious status & test status
     num = 0
-    flag = sum(s[:,0])>0 #sums up all values in column 1 and sees if greater than zero
-    assert flag # asserting that flag is true
+    flag = sum(s[:,0])>0
+    assert flag
     stages = 0
     if len(s[:,0])==1:
         s[0,1] = s[0,0]
@@ -32,28 +32,38 @@ def binary_splitting_round(s):
 def binary_splitting(s):
     # modified bs
     # s: 1-d array the infectious status
-    st = np.zeros((len(s),2))
-    st[:,0] = s
-    st[:,1] = np.nan
+    st = np.zeros((len(s),2)) #create a 2D array with |s| rows and 2 columns
+    st[:,0] = s #set the first column to the infections values (remember that the tests need to confirm these)
+    st[:,1] = np.nan #set the second column to the outcomes of the tests for each individual 
     nums = 0
-    count = sum(np.isnan(st[:,1]))
+    count = sum(np.isnan(st[:,1])) #count is equal to the number of unconfirmed infection statuses initiall set to |s|
     stages = 0
+    
+    #the following code will iterate until all people infection status' are confimred 
     # the undetermined people
     while count!=0:
         mask = np.isnan(st[:,1])
-        flag = sum(st[mask,0]>0)>0
+        # mask is a boolean array indicating which rows have np.nan in the second column. 
+        # np.isnan(st[:,1]) generates a boolean array where each element is True if the corresponding element in 
+        # st[:,1] is np.nan and False otherwise.
+        
+        flag = sum(st[mask,0]>0)>0 #simply tests (pool) if there are any infected people amongst the undetermined ones
         nums += 1
         stages+=1
         if not flag:
-            st[mask,1] = 0
-        else:
-            n,stmp,stage = binary_splitting_round(st[mask,:])
+            st[mask,1] = 0 #set all undetermined ones to not infected
+            
+        else:#at lease one infectious individual
+            n,stmp,stage = binary_splitting_round(st[mask,:]) #send all undetermined in 2D array to funct.
+            # n: Additional number of operations performed.
+            # stmp: Temporary array with updated statuses of only the undetermined (masked) elements.
+            # stage: Additional number of stages performed.             
             st[mask,1] = stmp[:,1]
             nums += n
             stages += stage
         count = sum(np.isnan(st[:,1]))
         
-    assert sum(st[:,0]!=st[:,1])==0
+    assert sum(st[:,0]!=st[:,1])==0 #tests to make sure columns match as they should
     return nums,stages, st[:,1]
 
 # diag----------------------------------------------------
