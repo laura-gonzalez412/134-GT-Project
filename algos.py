@@ -118,30 +118,6 @@ def diag_splitting(s):
     return num_tests,stages
 
 #----------------------------------Edited Code Below---------------------------------------------------
-def get_infected_range(infections):
-    """
-    Determine the range of infected individuals in a group based on predefined categories.
-
-    Parameters:
-    infections (np.array): Array of binary values where 1 indicates infection and 0 indicates no infection.
-
-    Returns:
-    tuple: A tuple representing the range of infected individuals (min, max).
-    """
-    count = np.sum(infections)  # Count the number of infected individuals
-    
-    if count == 0:
-        return (0, 0)  # No one is infected
-    elif count == 1:
-        return (1, 1)  # Exactly one person is infected
-    elif count < 2:
-        return (1, 2)  # 1 to less than 2, not typically used unless fractional infections are considered
-    elif count < 4:
-        return (2, 4)  # 2 to less than 4
-    elif count < 8:
-        return (4, 8)  # 4 to less than 8
-    else:
-        return (8, np.inf)  # 8 or more
 
 def test_T1(group):
     # Simulates a test that returns the exact number of infected in the group
