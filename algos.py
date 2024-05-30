@@ -1,6 +1,5 @@
 import numpy as np
 import random
-from concurrent.futures import ThreadPoolExecutor
 
 
 # binary spliting
@@ -177,59 +176,159 @@ def test_T2(group):
         return 3
     else:
         return 4
-    
+
 def Qtesting2(s):
     '''
     s(np.array): binary string of infection status
     '''
+    n = len(s)
+    g = 8  # Maximum group size
     num_tests = 0
     stages = 0
-    ###################################################
-    def recursive_test(indices):
-        nonlocal num_tests, stages
-        
-        #base case where we have gone through all people in the set dont need to do anything just return 
-        if len(indices) == 0:
-            return
-        
-        #begin new round of testing
+
+    # Step 1: Initialize the array with indices and infection statuses
+    initial_array = np.column_stack((np.arange(n), s, np.zeros(n)))  # Adding a third column for scores
+
+    # Step 2: Permute and group
+    perm1 = np.random.permutation(initial_array)
+    perm2 = np.random.permutation(initial_array)
+    print(perm1)
+    print()
+    print(perm2)
+    print()
+    groups_p1 = [perm1[i:i+g] for i in range(0, n, g)]
+    groups_p2 = [perm2[i:i+g] for i in range(0, n, g)]
+    
+    # Create group mappings
+    group_map_p1 = {int(individual[0]): i for i, group in enumerate(groups_p1) for individual in group}
+    group_map_p2 = {int(individual[0]): i for i, group in enumerate(groups_p2) for individual in group}
+
+    # Step 3: First stage testing
+    for group in groups_p1:
+        Ct_values = group[:, 1]  # Infection statuses Ct is a 1D array with the infection statuses of the individuals
+        score = test_T2(Ct_values)
+        group[:, 2] = score
         num_tests += 1
-        stages += 1
-        group = s[indices]
+
+    for group in groups_p2:
+        Ct_values = group[:, 1]
+        score = test_T2(Ct_values)
+        group[:, 2] = score
+        num_tests += 1
+
+    stages += 1
+
+    # Step 4: Cross-reference and classify
+    perm1_dict = {int(row[0]): row[2] for row in perm1}  # Dictionary of scores from perm1
+    perm2_dict = {int(row[0]): row[2] for row in perm2}  # Dictionary of scores from perm2
+
+    print(perm1)
+    print()
+    print(perm2)
+    print()
+
+    for i in range(n):
+        id1 = perm1[i][0]
+        score1 = perm1_dict[id1]
+        score2 = perm2_dict[id1]
+        pair = (score1, score2)
+        print(pair)
+
+        if pair in [(0, 0), (0, 1), (0, 2), (0, 3), (0, 4), (1, 0), (2, 0), (3, 0), (4, 0)]:
+            status = "Uninfected"
+        elif pair in [(4, 4), (4, 1), (1, 4), (4, 2), (2, 4), (4, 3), (3, 4)]:
+            status = "Infected"
+        elif pair in [(1, 1), (1, 2), (1, 3), (2, 1), (3, 1)]:
+            if perm1[i][1] == 1:
+                status = "Infected"
+            else:
+                status = "Uninfected"
+            num_tests += 1
+        elif pair in [(2, 2), (2, 3), (3, 2), (3, 3)]:
+            group_idx_p1 = group_map_p1[id1]
+            group_idx_p2 = group_map_p2[id1]
+
+            group_perm1 = groups_p1[group_idx_p1]
+            group_perm2 = groups_p2[group_idx_p2]
+            
+            if pair in [(3, 2), (2, 3), (2,2)]:
+                flag = np.any((group_perm1[:, 2] == 4))
+                if flag: 
+                    status = "Uninfected"
+                else:
+                    if perm1[i][1] == 1:
+                        status = "Infected"
+                    else:
+                        status = "Uninfected"
+                        num_tests += 1
+            else: 
+                flag = np.any((group_perm2[:, 2] == 4))
+                if flag: 
+                    status = "Uninfected"
+                else:
+                    if perm1[i][1] == 1:
+                        status = "Infected"
+                    else:
+                        status = "Uninfected"
+                        num_tests += 1
+    
+        # Print or store the status for each individual
+        print(f"Individual {id1}: {status}")
+    stages+=1
+    return num_tests, stages
+    
+# def Qtesting2(s):
+#     '''
+#     s(np.array): binary string of infection status
+#     '''
+#     num_tests = 0
+#     stages = 0
+#     ###################################################
+#     def recursive_test(indices):
+#         nonlocal num_tests, stages
         
-        #call test_T2 which magically gies us the estimated number of people who are infected
-        category = test_T2(group)
+#         #base case where we have gone through all people in the set dont need to do anything just return 
+#         if len(indices) == 0:
+#             return
+        
+#         #begin new round of testing
+#         num_tests += 1
+#         stages += 1
+#         group = s[indices]
+        
+#         #call test_T2 which magically gies us the estimated number of people who are infected
+#         category = test_T2(group)
 
-        if category == 0:
-            return  # All individuals are negative and the previous recursive call has accounted for this test
-                    # no need to return num_tests or stages
-        elif category == 4: #high risk of infections
-            # Since infection count is large split the group into smaller subgroups for further testing
-            # similar to Qtesting1
-            mid = len(indices) // 2
-            recursive_test(indices[:mid])
-            recursive_test(indices[mid:])
+#         if category == 0:
+#             return  # All individuals are negative and the previous recursive call has accounted for this test
+#                     # no need to return num_tests or stages
+#         elif category == 4: #high risk of infections
+#             # Since infection count is large split the group into smaller subgroups for further testing
+#             # similar to Qtesting1
+#             mid = len(indices) // 2
+#             recursive_test(indices[:mid])
+#             recursive_test(indices[mid:])
 
-            #################################### Additional Code for Parallel Testing
-            # with ThreadPoolExecutor() as executor:
-            #     futures = [executor.submit(recursive_test, indices[:mid]), 
-            #                executor.submit(recursive_test, indices[mid:])]
-            #     # Wait for all threads to complete
-            #     for future in futures:
-            #         future.result()
-            ###################################
+#             #################################### Additional Code for Parallel Testing
+#             # with ThreadPoolExecutor() as executor:
+#             #     futures = [executor.submit(recursive_test, indices[:mid]), 
+#             #                executor.submit(recursive_test, indices[mid:])]
+#             #     # Wait for all threads to complete
+#             #     for future in futures:
+#             #         future.result()
+#             ###################################
             
-        else: #here we can use the knowledge of the ranges to tell us how we can run our next tests
-            # Handle other categories by additional tests based on estimated infections
-            lower_bound = 2 ** (category - 1)
-            upper_bound = 2 ** category
-            # Category 1: lower_bound = 1, upper_bound = 2 low risk
-            # Category 2: lower_bound = 2, upper_bound = 4  medium risk
-            # Category 3: lower_bound = 4, upper_bound = 8  med-high risk
+#         else: #here we can use the knowledge of the ranges to tell us how we can run our next tests
+#             # Handle other categories by additional tests based on estimated infections
+#             lower_bound = 2 ** (category - 1)
+#             upper_bound = 2 ** category
+#             # Category 1: lower_bound = 1, upper_bound = 2 low risk
+#             # Category 2: lower_bound = 2, upper_bound = 4  medium risk
+#             # Category 3: lower_bound = 4, upper_bound = 8  med-high risk
             
-            estimated_infected = (lower_bound + upper_bound) // 2 #gets the average of infected in that range
-            infected_indices = np.random.choice(indices, min(estimated_infected, len(indices)), replace=False)
-            recursive_test(np.setdiff1d(indices, infected_indices))
+#             estimated_infected = (lower_bound + upper_bound) // 2 #gets the average of infected in that range
+#             infected_indices = np.random.choice(indices, min(estimated_infected, len(indices)), replace=False)
+#             recursive_test(np.setdiff1d(indices, infected_indices))
 
     recursive_test(np.arange(len(s)))
     return num_tests, stages
