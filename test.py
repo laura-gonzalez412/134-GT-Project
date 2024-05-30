@@ -154,14 +154,29 @@ def Qtesting2(s):
         pair = (score1, score2)
         print(pair)
         
-        # Here you would implement the classification logic based on the score pairs
-        # Example (simplified):
-        if pair in [(0, 0) , (0,1) , (1,0), (2,0), (0,2), (1,2), (2,1)]:
+        # implement the classification logic based on the score pairs
+        
+        #if they got a zero in any then it means they are not infected
+        if pair in [(0, 0) , (0,1) , (0,2), (0,3), (0,4), (1,0), (2,0), (3,0), (4,0)]: 
             status = "Uninfected"
+        
+        #else if they got any 4 in their pairs, they are definitely infected
         elif pair in [(4, 4), (4,1), (1, 4), (4,2), (2,4), (4,3) , (3,4)]:
             status = "Infected"
-        else: #(2,3), (3,2), 
-            status = "Needs further testing"
+        
+        #code on what conditions are necessary to test individually (do on higher prob)
+        elif pair in [(1,1), (1,2), (1,3), (2,1), (3,1)]:
+            #perform individual test
+            if perm1[i][1] == 1:
+                status = "Infected"
+            else:
+                status = "Uninfected"
+                
+        #code on when to back reference the persons group and see if there was someone 
+        #who was more infected 
+        else: #(2,2), (2,3), (3,2), (3,3)
+            
+            
         # Print or store the status for each individual
         print(f"Individual {id1}: {status}")
 
@@ -176,7 +191,7 @@ def Qtesting2(s):
 
 
 # Example usage
-s = np.random.randint(0, 2, size=32)  # Mock binary infection status array
+s = np.random.randint(0, 2, size=16)  # Mock binary infection status array
 print(s)
 print()
 num_tests, stages = Qtesting2(s)
