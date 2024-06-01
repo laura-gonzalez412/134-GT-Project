@@ -1,5 +1,50 @@
 import numpy as np
 
+def test_T1(group):
+    """
+    Simulate the T1 test which returns the number of infected individuals in the group.
+    """
+    return np.sum(group)
+
+def Qtesting1(s):
+    """
+    Perform adaptive group testing using T1 tests on the entire population.
+    
+    Parameters:
+    s (np.array): Binary array of infection status.
+    
+    Returns:
+    num_tests (int): Total number of tests used.
+    stages (int): Total number of stages used.
+    """
+    num_tests = 0
+    stages = 0
+
+    def recursive_test(indices):
+        nonlocal num_tests, stages
+        
+        if len(indices) == 0:
+            return
+        
+        num_tests += 1
+        stages += 1
+        group = s[indices]
+        
+        infected_count = test_T1(group)
+
+        if infected_count == 0 or infected_count == len(indices):
+            return
+        
+        mid = len(indices) // 2
+        left_indices = indices[:mid]
+        right_indices = indices[mid:]
+
+        recursive_test(left_indices)
+        recursive_test(right_indices)
+
+    recursive_test(np.arange(len(s)))
+    return num_tests, stages
+
 def Qtesting1_comm_aware(s, communities):
     """
     Perform adaptive group testing using T1 tests considering community structure.
@@ -12,69 +57,26 @@ def Qtesting1_comm_aware(s, communities):
     total_tests (int): Total number of tests used.
     total_stages (int): Total number of stages used.
     """
-    def binary_splitting_T1(group):
-        """
-        Perform binary splitting using T1 tests on a given group.
-        
-        Parameters:
-        group (list): Indices of individuals in the group.
-        
-        Returns:
-        tests (int): Number of tests used.
-        stages (int): Number of stages used.
-        """
-        if len(group) == 1:
-            return (1, 1)  # One test, one stage for a single individual
-        
-        tests = 0
-        stages = 0
-        
-        # Initialize groups for splitting
-        groups = [group]
-        
-        while len(groups) > 0:
-            new_groups = []
-            stages += 1
-            
-            for g in groups:
-                if len(g) == 1:
-                    tests += 1
-                    continue
-                
-                # Split the group into two halves
-                mid = len(g) // 2
-                left_group = g[:mid]
-                right_group = g[mid:]
-                
-                # Perform T1 test
-                left_infected = sum(s[left_group])
-                right_infected = sum(s[right_group])
-                
-                tests += 1
-                
-                if left_infected > 0:
-                    new_groups.append(left_group)
-                
-                if right_infected > 0:
-                    new_groups.append(right_group)
-            
-            groups = new_groups
-        
-        return (tests, stages)
-    
     total_tests = 0
     total_stages = 0
     
-    # Perform initial testing on representative samples from each community
     for community in communities:
-        representative_sample = community[:min(5, len(community))]  # Take up to 5 representatives
-        initial_tests, initial_stages = binary_splitting_T1(representative_sample)
+        sample_size = min(5, len(community))  # Use a small sample size for initial testing
+        representative_sample = np.random.choice(community, sample_size, replace=False)  # Randomly select representatives
+        
+        # Perform initial test
+        initial_group = s[representative_sample]
+        initial_tests = 1
+        initial_stages = 1
+        initial_infected_count = test_T1(initial_group)
+        
         total_tests += initial_tests
         total_stages = max(total_stages, initial_stages)
         
         # If initial tests indicate infections, perform detailed testing within the community
-        if sum(s[representative_sample]) > 0:
-            community_tests, community_stages = binary_splitting_T1(community)
+        if initial_infected_count > 0:
+            community_s = s[community]
+            community_tests, community_stages = Qtesting1(community_s)
             total_tests += community_tests
             total_stages = max(total_stages, community_stages)
     
