@@ -37,106 +37,58 @@ def SBM(N, M, q0, q1):
 
 def test_T1(group):
     """
-    Simulates the T1 test which returns the number of infected individuals in the group.
+    Simulate the T1 test which returns the number of infected individuals in the group.
     """
     return np.sum(group)
 
-def Qtesting1(s):
-    """
-    Perform adaptive group testing using T1 tests on the entire population.
-    
-    Parameters:
-    s (np.array): Binary array of infection status.
-    
-    Returns:
-    num_tests (int): Total number of tests used.
-    stages (int): Total number of stages used.
-    """
+def Qtesting1_comm_aware(s, communities):
+    '''
+    s(np.array): binary string of infection status
+    communities(list): the community information
+    '''
     num_tests = 0
     stages = 0
 
-    def recursive_test(indices):
-        nonlocal num_tests, stages
-        
-        if len(indices) == 0:
-            return
-        
-        num_tests += 1
-        stages += 1
-        group = s[indices]
-        
-        infected_count = test_T1(group)
-
-        if infected_count == 0 or infected_count == len(indices):
-            return
-        
-        mid = len(indices) // 2
-        left_indices = indices[:mid]
-        right_indices = indices[mid:]
-
-        recursive_test(left_indices)
-        recursive_test(right_indices)
-
-    recursive_test(np.arange(len(s)))
-    return num_tests, stages
-
-def Qtesting1_comm_aware(s, communities):
-    """
-    Perform adaptive group testing using T1 tests considering community structure.
-    
-    Parameters:
-    s (numpy array): Infection status array (1 for infected, 0 for not infected).
-    communities (list of lists): Each sublist represents a community with indices of individuals in that community.
-    
-    Returns:
-    total_tests (int): Total number of tests used.
-    total_stages (int): Total number of stages used.
-    """
-    total_tests = 0
-    total_stages = 0
-    
     for community in communities:
         sample_size = min(5, len(community))  # Use a small sample size for initial testing
         representative_sample = np.random.choice(community, sample_size, replace=False)  # Randomly select representatives
         
-        # Perform initial test on the combined sample
+        # Perform initial test
         initial_group = s[representative_sample]
         initial_tests = 1
         initial_stages = 1
         initial_infected_count = test_T1(initial_group)
-        
-        total_tests += initial_tests
-        total_stages = max(total_stages, initial_stages)
-        
-        # If initial tests indicate infections, perform detailed testing within the community
+
+        num_tests += initial_tests
+        stages = max(stages, initial_stages)
+
         if initial_infected_count > 0:
-            community_s = s[community]
-            community_tests, community_stages = Qtesting1(community_s)
-            total_tests += community_tests
-            total_stages = max(total_stages, community_stages)
-    
-    return total_tests, total_stages
+            # If initial test is positive, test each member individually
+            community_tests = len(community)
+            num_tests += community_tests
+            stages = max(stages, 2)  # One stage for initial test, one for individual tests
+
+        else:
+            # If initial test is negative, test the entire community as a group
+            community_group_test = test_T1(s[community])
+            num_tests += 1
+            stages = max(stages, 2)
+
+            if community_group_test > 0:
+                # If the group test is positive, test each member individually
+                community_tests = len(community)
+                num_tests += community_tests
+                stages = max(stages, 3)  # One stage for initial test, one for group test, one for individual tests
+            else:
+                # If the group test is negative, all members are uninfected
+                break
+
+    return num_tests, stages
 
 # Example usage
-# Example usage with SBM
-N = 10
-M = 3
-q0 = 0.8
-q1 = 0.1
-
-G = SBM(N, M, q0, q1)
-
-# Create the infection status array
-infection_rate = 0.2
-s = np.random.choice([0, 1], size=N, p=[1 - infection_rate, infection_rate])
-
-# Create the communities list from community membership
-communities = [[] for _ in range(M)]
-community_membership = np.argmax(G, axis=1) % M  # Derive community membership from adjacency matrix
-for i in range(N):
-    communities[community_membership[i]].append(i)
-
-# Run the community-aware testing with Qtesting1_comm_aware
-print("Qtesting1_comm_aware results:")
+s = np.array([0, 1, 0, 0, 1, 1, 0, 0, 1, 0])
+communities = [[0, 1, 2], [3, 4, 5], [6, 7, 8, 9]]
 total_tests, total_stages = Qtesting1_comm_aware(s, communities)
 print(f"Total tests: {total_tests}, Total stages: {total_stages}")
+
+

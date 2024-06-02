@@ -167,15 +167,15 @@ def test_T2(group):
     # Simulates a test that categorizes the count of infected individuals in a group
     infected_count = np.sum(group)
     if infected_count == 0:
-        return 0
+        return 0 #if noone infected
     elif 1 <= infected_count < 2:
-        return 1
+        return 1 #if one is infected
     elif 2 <= infected_count < 4:
-        return 2
+        return 2 #if 2-3 are infected
     elif 4 <= infected_count < 8:
-        return 3
+        return 3 #if 4-7 are infected
     else:
-        return 4
+        return 4 #if 8 or more are infected
 
 def Qtesting2(s):
     '''
@@ -276,88 +276,56 @@ def Qtesting2(s):
         print(f"Individual {id1}: {status}")
     stages+=1
     return num_tests, stages
-    
-# def Qtesting2(s):
-#     '''
-#     s(np.array): binary string of infection status
-#     '''
-#     num_tests = 0
-#     stages = 0
-#     ###################################################
-#     def recursive_test(indices):
-#         nonlocal num_tests, stages
-        
-#         #base case where we have gone through all people in the set dont need to do anything just return 
-#         if len(indices) == 0:
-#             return
-        
-#         #begin new round of testing
-#         num_tests += 1
-#         stages += 1
-#         group = s[indices]
-        
-#         #call test_T2 which magically gies us the estimated number of people who are infected
-#         category = test_T2(group)
 
-#         if category == 0:
-#             return  # All individuals are negative and the previous recursive call has accounted for this test
-#                     # no need to return num_tests or stages
-#         elif category == 4: #high risk of infections
-#             # Since infection count is large split the group into smaller subgroups for further testing
-#             # similar to Qtesting1
-#             mid = len(indices) // 2
-#             recursive_test(indices[:mid])
-#             recursive_test(indices[mid:])
-
-#             #################################### Additional Code for Parallel Testing
-#             # with ThreadPoolExecutor() as executor:
-#             #     futures = [executor.submit(recursive_test, indices[:mid]), 
-#             #                executor.submit(recursive_test, indices[mid:])]
-#             #     # Wait for all threads to complete
-#             #     for future in futures:
-#             #         future.result()
-#             ###################################
-            
-#         else: #here we can use the knowledge of the ranges to tell us how we can run our next tests
-#             # Handle other categories by additional tests based on estimated infections
-#             lower_bound = 2 ** (category - 1)
-#             upper_bound = 2 ** category
-#             # Category 1: lower_bound = 1, upper_bound = 2 low risk
-#             # Category 2: lower_bound = 2, upper_bound = 4  medium risk
-#             # Category 3: lower_bound = 4, upper_bound = 8  med-high risk
-            
-#             estimated_infected = (lower_bound + upper_bound) // 2 #gets the average of infected in that range
-#             infected_indices = np.random.choice(indices, min(estimated_infected, len(indices)), replace=False)
-#             recursive_test(np.setdiff1d(indices, infected_indices))
-
-    recursive_test(np.arange(len(s)))
-    return num_tests, stages
-
-def Qtesting1_comm_aware(s,communities):
+def Qtesting1_comm_aware(s, communities):
     '''
     s(np.array): binary string of infection status
     communities(list): the community information
     '''
     num_tests = 0
     stages = 0
-    ###################################################
-    '''your code here'''
-    '''
-    s(np.array): binary string of infection status
-    communities(list): the community information
-    Apply Qtesting1 logic but initiate within communities.
-    '''
-    ###################################################
 
-    return num_tests,stages
+    for community in communities:
+        sample_size = min(5, len(community))# take a representative group of 5 people or the length of the group if smaller 
+        representative_sample = np.random.choice(community, sample_size, replace=False)
+        initial_group = s[representative_sample]
+        initial_tests = 1
+        initial_stages = 1
+        initial_infected_count = test_T1(initial_group)
+
+        num_tests += initial_tests
+        stages = max(stages, initial_stages)
+
+        if initial_infected_count > 0:
+            # If initial test is positive, test each member individually
+            community_tests = len(community)
+            num_tests += community_tests
+            stages = max(stages, 2)  # One stage for initial test, one for individual tests
+
+        else:
+            # If initial test is negative, test the entire community as a group
+            community_group_test = test_T1(s[community])
+            num_tests += 1
+            stages = max(stages, 2)
+
+            if community_group_test > 0:
+                # If the group test is positive, test each member individually
+                community_tests = len(community)
+                num_tests += community_tests
+                stages = max(stages, 3)  # One stage for initial test, one for group test, one for individual tests
+            else:
+                # If the group test is negative, all members are uninfected
+                break
+
+    return num_tests, stages
 
 def Qtesting2_comm_aware(s,communities):
     '''
     s(np.array): binary string of infection status
     communities(list): the community information
     '''
-    num_tests = 0
-    stages = 0
+    # num_tests = 0
+    # stages = 0
     ###################################################
     '''your code here'''
     '''
@@ -365,35 +333,52 @@ def Qtesting2_comm_aware(s,communities):
     communities(list): the community information
     Implement an adaptive algorithm using range-based tests (T2) that are aware of community structures.
     '''
-    if len(s) == 0:
-        return num_tests, stages
+    num_tests = 0
+    stages = 0
 
-    # Iterate over each community
     for community in communities:
-        if len(community) > 0:
-            # Extract the infection statuses for the current community
-            community_statuses = s[community]
-            
-            # Perform an initial test on the community
-            infected_range = get_infected_range_estimate(community_statuses)
-            num_tests += 1  # Count this initial community test
-            stages += 1  # Each community test is considered a new stage if done sequentially
+        # sample_size = min(5, len(community))
+        # representative_sample = np.random.choice(community, sample_size, replace=False)
+        # initial_group = s[representative_sample]
+        initial_tests = 1
+        initial_stages = 1
+        # initial_test_range = test_T2(initial_group)
+        
+        number = test_T2(community)
+        
+        if number == 4:
+            #this indicates that q0 =1 and q1 =0
+            break #everyone in that community is infected
+        
+        elif number in [3,2,1]:
+            #this means q0=0.9 or 0.5 so need to do additional testing 
+            initial_tests, initial_stages += Qtesting2(community)
+        
+        else: #indicates that noone in that group is infected 
+            pass 
+        
+        num_tests += initial_tests
+        stages = max(stages, initial_stages)
 
-            if infected_range[1] == 0:
-                continue  # No further testing needed if the upper bound is 0
-            elif infected_range[0] == len(community_statuses):
-                continue  # All are infected, no further tests needed if individual status not required
+        # if initial_test_range > 0:
+        #     # Perform a group test on the entire community
+        #     community_group_test = test_T2(s[community])
+        #     num_tests += 1
+        #     stages = max(stages, 2)
 
-            # If the exact status within the community is unclear, apply further tests
-            mid = len(community_statuses) // 2
-            num_tests_left, stages_left = Qtesting2_comm_aware(community_statuses[:mid], [range(mid)])
-            num_tests_right, stages_right = Qtesting2_comm_aware(community_statuses[mid:], [range(mid, len(community_statuses))])
-            
-            num_tests += num_tests_left + num_tests_right
-            stages += max(stages_left, stages_right)  # Assuming parallel testing within the community
+        #     if community_group_test > 0:
+        #         # If the group test is positive, test each member individually
+        #         community_tests = len(community)
+        #         num_tests += community_tests
+        #         stages = max(stages, 3)  # One stage for initial test, one for group test, one for individual tests
+        #     else:
+        #         # If the group test is negative, all members are uninfected
+        #         pass
+        # else:
+        #     # If the initial test is negative, conclude all members are uninfected
+        #     stages = max(stages, 2)
 
-    ###################################################
+    return num_tests, stages
 
 
-
-    return num_tests,stages
+    # return num_tests,stages
