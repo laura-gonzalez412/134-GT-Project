@@ -87,3 +87,5 @@ s = np.array([0, 1, 0, 0, 1, 1, 0, 0, 1, 0])
 communities = [[0, 1, 2], [3, 4, 5], [6, 7, 8, 9]]
 total_tests, total_stages = Qtesting1_comm_aware(s, communities)
 print(f"Total tests: {total_tests}, Total stages: {total_stages}")
+
+
