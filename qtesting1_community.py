@@ -1,4 +1,5 @@
 import numpy as np
+import random
 
 def SBM(N, M, q0, q1):
     """
@@ -138,9 +139,4 @@ for i in range(N):
 # Run the community-aware testing with Qtesting1_comm_aware
 print("Qtesting1_comm_aware results:")
 total_tests, total_stages = Qtesting1_comm_aware(s, communities)
-print(f"Total tests: {total_tests}, Total stages: {total_stages}")
-
-# Run the community-aware testing with Qtesting2_comm_aware
-print("\nQtesting2_comm_aware results:")
-total_tests, total_stages = Qtesting2_comm_aware(s, communities)
 print(f"Total tests: {total_tests}, Total stages: {total_stages}")
