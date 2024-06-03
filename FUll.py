@@ -3,6 +3,9 @@ import random
 import matplotlib.pyplot as plt
 import os
 import pickle
+from algos import *
+from infect import infect
+from sbm import SBM
 
 def SBM(N, M, q0, q1):
     community_membership = np.random.choice(M, N)
@@ -84,50 +87,153 @@ def Qtesting2_comm_aware(s, communities):
             stages = max(stages, 2)
     return num_tests, stages
 
+import os
+import pickle
+import numpy as np
+
 def iter(N, M, q0, q1, p0, p1, time_steps, num_sims, method, dataset='sbm'):
-    Gs = np.zeros((num_sims, N, N))
-    Communities = dict()
-    Individuals = dict()
-    if dataset == 'sbm':
-        for i in range(num_sims):
-            Gs[i], community_membership = SBM(N, M, q0, q1)
-            communities = detect_communities(community_membership, M)
-            Communities[i] = communities
-            Individuals[i] = infect(Gs[i], p0, p1, time_steps)
-    elif dataset == 'iid':
-        for i in range(num_sims):
-            individuals = np.random.binomial(1, p0, N)
-            Communities[i] = [list(range(N))]
-            Individuals[i] = individuals
+    name = dataset + 'N' + str(N) + '_M' + str(M) + '_SIM' + str(num_sims) + '_step' + str(time_steps) + '_q0' + str(q0) + '_q1' + str(q1) + '_p0' + str(p0) + '_p1' + str(p1) + method + 'graphs.pkl'
+    
+    if not os.path.isfile(name):
+        print('Generating synthetic dataset!')
+        
+        Gs = np.zeros((num_sims, N, N))
+        Communities = dict()
+        Individuals = dict()
+        
+        if dataset == 'sbm':
+            for i in range(num_sims):
+                Gs[i] = SBM(N, M, q0, q1)
+                communities = [[] for _ in range(M)]
+                community_membership = np.argmax(Gs[i], axis=1) % M
+                for node in range(N):
+                    communities[community_membership[node]].append(node)
+                Communities[i] = communities
+                Individuals[i] = infect(Gs[i], p0, p1, time_steps)
+                
+        elif dataset == 'iid':
+            for i in range(num_sims):
+                individuals = np.random.binomial(1, p0, N)
+                Communities[i] = [list(range(N))]
+                Individuals[i] = individuals
+        
+        data = {
+            'graph': Gs,
+            'communities': Communities,
+            'individuals': Individuals
+        }
+        with open(name, 'wb') as infile:
+            pickle.dump(data, infile)
+            print('Dataset done!')
 
-    fraction_ppl = []
-    fraction_family = []
-    fraction_ppl_in_family = []
-    test_counts = []
+    ###################################################
+    '''Initialization of parameters to use in the analysis of data'''
+    fraction_ppl = 0
+    fraction_family = 0
+    fraction_ppl_in_family = 0
+    total_tests_bs = 0
+    total_stages_bs = 0
+    total_tests_q1 = 0
+    total_stages_q1 = 0
+    total_tests_q2 = 0
+    total_stages_q2 = 0
+    total_tests_q1_c = 0
+    total_stages_q1_c = 0
+    total_tests_q2_c = 0
+    total_stages_q2_c = 0
+    ###################################################
 
+    if os.path.isfile(name):
+        with open(name, 'rb') as infile:
+            data = pickle.load(infile)
+        print('Data loaded!')    
+    
     for i in range(num_sims):
-        G = Gs[i]
-        communities = Communities[i]
-        individuals = Individuals[i]
+        G = data['graph'][i]
+        communities = data['communities'][i]
+        individuals = data['individuals'][i]
 
+        ## Calculating statistics for the normal algorithms without interleaving 
         total_infected = np.sum(individuals)
-        fraction_ppl.append(total_infected / N)
+        fraction_ppl += total_infected / N
 
         infected_communities = sum(np.any(individuals[community]) for community in communities)
-        fraction_family.append(infected_communities / M)
+        fraction_family += infected_communities / len(communities)  # Corrected calculation
 
         avg_infected_per_community = np.mean([np.sum(individuals[community]) / len(community) for community in communities])
-        fraction_ppl_in_family.append(avg_infected_per_community)
+        fraction_ppl_in_family += avg_infected_per_community
 
         numtests_q2_c, num_stages_q2_c = Qtesting2_comm_aware(individuals.copy(), communities)
-        test_counts.append(numtests_q2_c)
+        total_tests_q2_c += numtests_q2_c
+        total_stages_q2_c += num_stages_q2_c
 
-    avg_fraction_ppl = np.mean(fraction_ppl)
-    avg_fraction_family = np.mean(fraction_family)
-    avg_fraction_ppl_in_family = np.mean(fraction_ppl_in_family)
-    avg_tests = np.mean(test_counts)
+        # Interleave the individuals
+        s = individuals.copy()
+        np.random.shuffle(s)
+        
+        # Binary splitting
+        numtests_bs, num_stages_bs, _ = binary_splitting(s)
+        total_tests_bs += numtests_bs
+        total_stages_bs += num_stages_bs
+        
+        # Algorithm 1
+        numtests_q1, num_stages_q1 = Qtesting1(s)
+        total_tests_q1 += numtests_q1
+        total_stages_q1 += num_stages_q1
+        
+        # Algorithm 2
+        numtests_q2, num_stages_q2 = Qtesting2(s)
+        total_tests_q2 += numtests_q2
+        total_stages_q2 += num_stages_q2
+        
+        # Community-aware algorithm 1
+        numtests_q1_c, num_stages_q1_c = Qtesting1_comm_aware(individuals.copy(), communities)
+        total_tests_q1_c += numtests_q1_c
+        total_stages_q1_c += num_stages_q1_c
+        
+        # Community-aware algorithm 2
+        numtests_q2_c, num_stages_q2_c = Qtesting2_comm_aware(individuals.copy(), communities)
+        total_tests_q2_c += numtests_q2_c
+        total_stages_q2_c += num_stages_q2_c
 
-    return avg_fraction_ppl, avg_fraction_family, avg_fraction_ppl_in_family, avg_tests
+    ###################################################
+    '''Calculating the average of the statistics'''
+    avg_fraction_ppl = fraction_ppl / num_sims
+    avg_fraction_family = fraction_family / num_sims
+    avg_fraction_ppl_in_family = fraction_ppl_in_family / num_sims
+    avg_tests_bs = total_tests_bs / num_sims
+    avg_stages_bs = total_stages_bs / num_sims
+    avg_tests_q1 = total_tests_q1 / num_sims
+    avg_stages_q1 = total_stages_q1 / num_sims
+    avg_tests_q2 = total_tests_q2 / num_sims
+    avg_stages_q2 = total_stages_q2 / num_sims
+    avg_tests_q1_c = total_tests_q1_c / num_sims
+    avg_stages_q1_c = total_stages_q1_c / num_sims
+    avg_tests_q2_c = total_tests_q2_c / num_sims
+    avg_stages_q2_c = total_stages_q2_c / num_sims
+    ###################################################
+
+    print("Average Tests and Stages (Binary Splitting):", avg_tests_bs, avg_stages_bs)
+    print("Average Tests and Stages (Qtesting1):", avg_tests_q1, avg_stages_q1)
+    print("Average Tests and Stages (Qtesting2):", avg_tests_q2, avg_stages_q2)
+    print("Average Tests and Stages (Qtesting1 Comm Aware):", avg_tests_q1_c, avg_stages_q1_c)
+    print("Average Tests and Stages (Qtesting2 Comm Aware):", avg_tests_q2_c, avg_stages_q2_c)
+    
+    return avg_fraction_ppl, avg_fraction_family, avg_fraction_ppl_in_family, avg_tests_q1, avg_stages_q1
+
+# Example usage with provided parameters:
+N = 256
+M = 16
+p0 = 0.001
+p1_values = np.arange(0.05, 1.05, 0.05)
+time_steps = 2
+num_sims = 100
+
+for q0, q1 in [(1, 0), (0.9, 0.1), (0.5, 0.2)]:
+    for p1 in p1_values:
+        iter(N, M, q0, q1, p0, p1, time_steps, num_sims, method='Qtesting')
+
+
 
 # Parameters
 N = 256

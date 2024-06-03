@@ -9,7 +9,7 @@ def infect_step(G,p1,individuals,N):
     '''
     
     # Process: 
-    # Here we use the given adjacency matrix to incorporate the two setep 
+    # Here we use the given adjacency matrix to incorporate the two step 
     # infection. We will step through all elements of the matrix and see 
     # which individuals are connected. If connected to anyone (i.e. G_ij = 1)
     # then with probability p1 we can infect them, otherwise move on. 
